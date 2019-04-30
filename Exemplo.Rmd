@@ -60,13 +60,14 @@ for (t in 1:3) {
   qt = 0
   pot = 0
   ode[[t]] = ode[[t]][order(abs(ode[[t]]$ca)),] # Ordem de despacho por merito
-  A = y[[t]]+volumes[t] # Agua disponivel para usar
+  A = sample(y[[t]],size = 1)+volumes[t] # Agua disponivel para usar
   gera[t,] = 0 #Limpango geracao doo foward anterior
   
-  for (k in 1:length(ode[[t]]$nome)) {
+  for (k in 1:length(ode[[t]]$nome)){
     
-    if(ode[[t]][k,"nome"] == "H" & A >= ode[[t]][k,"liminf"]){ # Agua com valor zero
-      volumes[t+1] = min(ode[[t]][k,"liminf"],vmax) # v_t+1 com volume limite pra valor zero
+    if((ode[[t]][k,"nome"] == "H")&(A >= ode[[t]][k,"liminf"])){ # Agua com valor zero
+      volumes[t+1] = min(max(A-(L-pot)/pho, ode[[t]][k,"liminf"]),
+                         vmax) # v_t+1 com valor para agua custo zero ou que supre a carga, mas menor que vmax
       q[t] = qt + min(c(A-volumes[t+1],qmax)) # Quanto pode turbinar para deixar volume
       gera[t,4] = gh + pho*q[t] # Geracao
       gh = gera[t,4]
