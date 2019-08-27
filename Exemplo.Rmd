@@ -6,6 +6,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
 ```
 
 
@@ -96,20 +97,3 @@ for (t in 1:tmax) {
   gera[t,"p3"] = pot %>% filter(nome =="T3") %>% pull(deltag) %>% sum()
   }
 ```
-  
-```{r}
-  for (k in 1:10) {
-    if(k==2){
-      next}
-    for (l in 1:5) {
-      print(c(k,l))
-      if(l ==3){
-        if(k==3){
-          break
-        }
-        
-      }
-    }
-  }
-```
-
