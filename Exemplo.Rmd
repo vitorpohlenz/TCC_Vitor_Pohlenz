@@ -15,7 +15,7 @@ vmax = 100
 v1 = 55
 qmax = 100
 pho = 1
-tmax = 3
+tmax = 4
 
 L=80
 
@@ -35,15 +35,25 @@ termicas = data.frame(nome = c("T1","T2","T3"),
                       )
 
 volumes = c(v1,NA[2:(tmax+1)])
-q = rep(0,tmax)
-a1 = data.frame(nome = "H", ca = 0, cl = 0 , liminf = 0, limsup =vmax, deltag = min((v1+y[[1]]-0)*pho,qmax*pho) )
-a2 = data.frame(nome = "H", ca = 0, cl = 0 , liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
-a3 = data.frame(nome = "H", ca = 0, cl = 0 , liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
+
+a1 = data.frame(nome = "H", 
+                ca = 0, cl = 0 , 
+                liminf = 0, limsup =vmax, deltag = min((v1+y[[1]]-0)*pho,qmax*pho) )
+a2 = data.frame(nome = "H", 
+                ca = 0, cl = 0 , 
+                liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
+a3 = data.frame(nome = "H", 
+                ca = 0, cl = 0 , 
+                liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
+a4 = data.frame(nome = "H", 
+                ca = 0, cl = 0 , 
+                liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
 
 # ordem de despacho
 ode = list(ode1 = rbind(a1,termicas),
            ode2 = rbind(a2,termicas),
-           ode3 = rbind(a3,termicas)
+           ode3 = rbind(a3,termicas),
+           ode4 = rbind(a4,termicas)
            )
 
 # geracao
@@ -53,7 +63,7 @@ gera = data.frame(p1 = rep(0,tmax),
                   gh = rep(0,tmax)
                   )
 
-cust = rep(0,tmax)
+custo = rep(0,tmax)
 
 # variaveis para somar vazao e volume no mesmo estagio
 pot = 0
@@ -95,5 +105,15 @@ for (t in 1:tmax) {
   gera[t,"p1"] = pot %>% filter(nome =="T1") %>% pull(deltag) %>% sum()
   gera[t,"p2"] = pot %>% filter(nome =="T2") %>% pull(deltag) %>% sum()
   gera[t,"p3"] = pot %>% filter(nome =="T3") %>% pull(deltag) %>% sum()
+  
+  custo[t] = as.matrix(gera[t,1:3]) %*% termicas$ca + as.matrix(hidro[c("ca","cl")]) %*% c(1,volumes[t+1])
   }
 ```
+
+```{r backward}
+for (t in tmax:1) {
+  
+}
+
+```
+
