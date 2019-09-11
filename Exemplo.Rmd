@@ -36,12 +36,9 @@ termicas = data.frame(nome = c("T1","T2","T3"),
 
 volumes = c(v1,NA[2:(tmax+1)])
 
-a1 = data.frame(nome = "H", 
-                ca = 0, cl = 0 , 
-                liminf = 0, limsup =vmax, deltag = min((v1+y[[1]]-0)*pho,qmax*pho) )
 a2 = data.frame(nome = "H", 
                 ca = 0, cl = 0 , 
-                liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
+                liminf = 0, limsup =min(v1+y[[1]],vmax), deltag = min((v1+y[[1]]-0)*pho,qmax*pho) )
 a3 = data.frame(nome = "H", 
                 ca = 0, cl = 0 , 
                 liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
@@ -50,10 +47,10 @@ a4 = data.frame(nome = "H",
                 liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
 
 # ordem de despacho
-ode = list(ode1 = rbind(a1,termicas),
-           ode2 = rbind(a2,termicas),
-           ode3 = rbind(a3,termicas),
-           ode4 = rbind(a4,termicas)
+ode = list(ode1 = rbind(a2,termicas),
+           ode2 = rbind(a3,termicas),
+           ode3 = rbind(a4,termicas),
+           ode4 = rbind(a2,termicas) # apenas hidro de custo zero
            )
 
 # geracao
@@ -81,8 +78,16 @@ for (t in 1:tmax) {
   pot = ode[[t]] %>% filter(liminf <= A) %>% # Apenas as regioes abaixo da quantia de agua disponivel
                       mutate(deltag = limsup-liminf) # quantia de geracao
   
-  pot[1,"limsup"] = A #Ajustando primeiro limite superior com a quantia de agua
-  pot[1,"deltag"] = A - pot[1,"liminf"] 
+  # Testa qual é hidro para ajustar liminf
+  pot = pot[order(pot$nome),]
+  
+  if (pot[1,"nome"]=="H") {
+    # Pot soh possui nomes com H ou T, e H vem antes do T
+    pot[1,"limsup"] = A #Ajustando primeiro limite superior com a quantia de agua
+    pot[1,"deltag"] = A - pot[1,"liminf"] 
+  }
+  
+  pot = pot[order(abs(pot$ca)),] # Reordenando por merito
   pot = pot  %>% mutate(soma = cumsum(deltag)) # Coluna de soma de geracoes
   
   # Quantia de geracao q supre a demanda
@@ -111,7 +116,7 @@ for (t in 1:tmax) {
 ```
 
 ```{r backward}
-for (t in tmax:1) {
+for (t in tmax:2) {
   
 }
 
