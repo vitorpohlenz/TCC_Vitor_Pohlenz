@@ -79,7 +79,7 @@ for (t in 1:tmax) {
                       mutate(deltag = limsup-liminf) # quantia de geracao
   
   # Testa qual é hidro para ajustar liminf
-  pot = pot[order(pot$nome, a$ca),]
+  pot = pot[order(pot$nome, pot$ca),]
   
   if (pot[1,"nome"]=="H") {
     # Pot soh possui nomes com H ou T, e H vem antes do T
@@ -102,9 +102,12 @@ for (t in 1:tmax) {
     
   pot = pot[1:fim,] # Definido despacho que supre a demana com as hidros segmentadas
   
+  if(pot[fim,"nome"]=="H"){
+    pot[fim,"liminf"] = pot$limsup[fim] - pot$deltag[fim]
+  }
+
   hidro = pot %>% filter(nome =="H")
-  
-  volumes[t+1] = hidro[nrow(hidro),"liminf"] # Atualizando volumes
+  volumes[t+1] = hidro[nrow(hidro),"liminf"] # Atualizando volumes 
   
   gera[t,"gh"] = sum(hidro$deltag)
   gera[t,"p1"] = pot %>% filter(nome =="T1") %>% pull(deltag) %>% sum()
