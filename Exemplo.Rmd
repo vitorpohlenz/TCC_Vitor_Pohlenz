@@ -79,7 +79,7 @@ for (t in 1:tmax) {
                       mutate(deltag = limsup-liminf) # quantia de geracao
   
   # Testa qual é hidro para ajustar liminf
-  pot = pot[order(pot$nome),]
+  pot = pot[order(pot$nome, a$ca),]
   
   if (pot[1,"nome"]=="H") {
     # Pot soh possui nomes com H ou T, e H vem antes do T
