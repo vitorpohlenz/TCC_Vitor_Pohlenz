@@ -120,7 +120,39 @@ for (t in 1:tmax) {
 
 ```{r backward}
 for (t in tmax:2) {
+  #####
+  # Parte foward do bacward
+  ode[[t]] = ode[[t]][order(abs(ode[[t]]$ca)),] # Ordem de despacho por merito
+  A = y[t] + volumes[t] # Agua disponivel para usar
   
+  gera[t,] = 0 #Limpando geracao
+  
+  pot = ode[[t]] %>% filter(liminf <= A) %>% # Apenas as regioes abaixo da quantia de agua disponivel
+                      mutate(deltag = limsup-liminf) # quantia de geracao
+  
+  # Testa qual é hidro para ajustar liminf
+  pot = pot[order(pot$nome, pot$ca),]
+  
+  if (pot[1,"nome"]=="H") {
+    # Pot soh possui nomes com H ou T, e H vem antes do T
+    pot[1,"limsup"] = A #Ajustando primeiro limite superior com a quantia de agua
+    pot[1,"deltag"] = A - pot[1,"liminf"] 
+  }
+  
+  pot = pot[order(abs(pot$ca)),] # Reordenando por merito
+  pot = pot  %>% mutate(soma = cumsum(deltag)) # Coluna de soma de geracoes
+  
+  # Quantia de geracao q supre a demanda
+  aux = pot$soma<L 
+  
+  fim = sum(aux)+1
+  pot[fim,"soma"] = L
+  pot[fim,"deltag"] = ifelse(test = fim==1, 
+                             yes = L,
+                             no = L- pot[fim-1,"soma"]
+                             )
+    
+  pot = pot[1:fim,] # Definido despacho que supre a demana com as hidros segmentadas
 }
 
 ```
