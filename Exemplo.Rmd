@@ -34,7 +34,9 @@ termicas = data.frame(nome = c("T1","T2","T3"),
                       deltag = c(30,20,Inf)
                       )
 
-volumes = c(v1,NA[2:(tmax+1)])
+volumes = c(v1,NA[2:(tmax+1)]) # Foward
+
+volback = volumes # Backward
 
 a2 = data.frame(nome = "H", 
                 ca = 0, cl = 0 , 
@@ -53,14 +55,18 @@ ode = list(ode1 = rbind(a2,termicas),
            ode4 = rbind(a2,termicas) # apenas hidro de custo zero
            )
 
-# geracao
+# geracao foward
 gera = data.frame(p1 = rep(0,tmax), 
                   p2 = rep(0,tmax), 
                   p3 = rep(0,tmax), 
                   gh = rep(0,tmax)
                   )
 
-custo = rep(0,tmax)
+gback = gera # Backward
+
+custo = rep(0,tmax) # Custo foward
+
+cusback = custo # Custo backward
 
 # variaveis para somar vazao e volume no mesmo estagio
 pot = 0
@@ -114,7 +120,7 @@ for (t in 1:tmax) {
   gera[t,"p2"] = pot %>% filter(nome =="T2") %>% pull(deltag) %>% sum()
   gera[t,"p3"] = pot %>% filter(nome =="T3") %>% pull(deltag) %>% sum()
   
-  custo[t] = as.matrix(gera[t,1:3]) %*% termicas$ca + as.matrix(hidro[c("ca","cl")]) %*% c(1,volumes[t+1])
+  custo[t] = as.matrix(gera[t,1:3]) %*% termicas$ca + as.matrix(hidro[c("ca","cl")]) %*% c(volumes[t+1],1)
   }
 ```
 
@@ -125,7 +131,7 @@ for (t in tmax:2) {
   ode[[t]] = ode[[t]][order(abs(ode[[t]]$ca)),] # Ordem de despacho por merito
   A = y[t] + volumes[t] # Agua disponivel para usar
   
-  gera[t,] = 0 #Limpando geracao
+  gback[t,] = 0 #Limpando geracao
   
   pot = ode[[t]] %>% filter(liminf <= A) %>% # Apenas as regioes abaixo da quantia de agua disponivel
                       mutate(deltag = limsup-liminf) # quantia de geracao
@@ -151,8 +157,22 @@ for (t in tmax:2) {
                              yes = L,
                              no = L- pot[fim-1,"soma"]
                              )
-    
+  
   pot = pot[1:fim,] # Definido despacho que supre a demana com as hidros segmentadas
+  
+  if(pot[fim,"nome"]=="H"){
+    pot[fim,"liminf"] = pot$limsup[fim] - pot$deltag[fim]
+    }
+
+  hidro = pot %>% filter(nome =="H")
+  volback[t+1] = hidro[nrow(hidro),"liminf"] # valume para calcular custo apenas 
+  
+  gback[t,"gh"] = sum(hidro$deltag)
+  gback[t,"p1"] = pot %>% filter(nome =="T1") %>% pull(deltag) %>% sum()
+  gback[t,"p2"] = pot %>% filter(nome =="T2") %>% pull(deltag) %>% sum()
+  gback[t,"p3"] = pot %>% filter(nome =="T3") %>% pull(deltag) %>% sum()   
+  
+  cusback[t] = as.matrix(gback[t,1:3]) %*% termicas$ca + as.matrix(hidro[c("ca","cl")]) %*% c(volback[t+1],1)
 }
 
 ```
