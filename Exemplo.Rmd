@@ -10,14 +10,19 @@ library(dplyr)
 ```
 
 
+
 ```{r data}
 vmax = 100
+vmin = 0
 v1 = 55
 qmax = 100
 pho = 1
 tmax = 4
 
 L=80
+
+Nmax = 10 #Numero maximo de interacoes ### OBS: 1 inter = 1fow + 1 back
+n = 2 #primeira interacao, usar `n` como debugger 
 
 # y =  list(y1=5,
 #           y2 = c(0,60),
@@ -38,21 +43,30 @@ volumes = c(v1,NA[2:(tmax+1)]) # Foward
 
 volback = volumes # Backward
 
-a2 = data.frame(nome = "H", 
+# a0 = data.frame(nome = "H", 
+#                 ca = 0[1:Nmax] , cl = 0, 
+#                 liminf = 0[1:Nmax], limsup =min(v1+y[[1]],vmax)[1:Nmax], 
+#                 deltag = min((v1+y[[1]]-0)*pho,qmax*pho) )
+
+at = data.frame(nome = "H", 
+                ca = 0[1:Nmax], cl = 0 , 
+                liminf = 0[1:Nmax], limsup =vmax[1:Nmax], deltag = min((vmax-0)*pho,qmax*pho) )
+
+a0 = data.frame(nome = "H", 
                 ca = 0, cl = 0 , 
-                liminf = 0, limsup =min(v1+y[[1]],vmax), deltag = min((v1+y[[1]]-0)*pho,qmax*pho) )
-a3 = data.frame(nome = "H", 
-                ca = 0, cl = 0 , 
-                liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
-a4 = data.frame(nome = "H", 
-                ca = 0, cl = 0 , 
-                liminf = 0, limsup =vmax, deltag = min((vmax-0)*pho,qmax*pho) )
+                liminf = vmin, limsup =vmax, deltag = min((vmax-vmin)*pho,qmax*pho) )
+
+alpha = list(a1 = at,
+             a2 = at,
+             a3 = at,
+             a4 = a0
+             )
 
 # ordem de despacho
-ode = list(ode1 = rbind(a2,termicas),
-           ode2 = rbind(a3,termicas),
-           ode3 = rbind(a4,termicas),
-           ode4 = rbind(a2,termicas) # apenas hidro de custo zero
+ode = list(ode1 = rbind(a0,termicas),
+           ode2 = rbind(at,termicas),
+           ode3 = rbind(at,termicas),
+           ode4 = rbind(at,termicas) # apenas hidro de custo zero
            )
 
 # geracao foward
@@ -70,22 +84,26 @@ cusback = custo # Custo backward
 
 # variaveis para somar vazao e volume no mesmo estagio
 pot = 0
-hidro = a2
+hidro = a0
 
-# derivada do custo em relacao ao volume e coef linear de alpha
+# derivada do custo em relacao ao volume e coef linear de alpha e auxiliar de alpha
 dfdv = 0
 R = 0
+dfa = alpha[[1]]
 ```
 
 ```{r foward}
 # foward
 for (t in 1:tmax) {
+  
+  ode[[t]] = rbind(na.omit(alpha[[t]]),termicas )
   ode[[t]] = ode[[t]][order(abs(ode[[t]]$ca)),] # Ordem de despacho por merito
   A = y[t] + volumes[t] # Agua disponivel para usar
   
   gera[t,] = 0 #Limpando geracao do foward anterior
   
-  pot = ode[[t]] %>% filter(liminf <= A) %>% # Apenas as regioes abaixo da quantia de agua disponivel
+  pot = ode[[t]] %>% 
+          filter(liminf <= A) %>% # Apenas as regioes abaixo da quantia de agua disponivel
                       mutate(deltag = limsup-liminf) # quantia de geracao
   
   # Testa qual é hidro para ajustar liminf
@@ -131,12 +149,14 @@ for (t in 1:tmax) {
 ```{r backward}
 for (t in tmax:2) {
   # Parte foward do bacward
+  ode[[t]] = rbind(na.omit(alpha[[t]]),termicas )
   ode[[t]] = ode[[t]][order(abs(ode[[t]]$ca)),] # Ordem de despacho por merito
   A = y[t] + volumes[t] # Agua disponivel para usar
   
   gback[t,] = 0 #Limpando geracao
   
-  pot = ode[[t]] %>% filter(liminf <= A) %>% # Apenas as regioes abaixo da quantia de agua disponivel
+  pot = ode[[t]] %>% 
+          filter(liminf <= A) %>% # Apenas as regioes abaixo da quantia de agua disponivel
                       mutate(deltag = limsup-liminf) # quantia de geracao
   
   # Testa qual é hidro para ajustar liminf
@@ -183,6 +203,67 @@ for (t in tmax:2) {
   
   R = round(cusback[t] + dfdv*volumes[t], digits = 2)
   
+#  alpha[[t-1]][n,"ca"] = dfdv
+#  alpha[[t-1]][n,"cl"] = R
+  # Arvore de condicoes para atualizar ou n os segmentos de alpha
+  dfa = alpha[[t-1]] %>%
+          mutate(vl = (R-cl)/(dfdv-ca),
+                 li = liminf,
+                 ls = limsup,
+                 ik = 0,
+                 sk = 0,
+                 vway = case_when(!is.na(vl) & (vl>=li & vl<=ls) ~ 1,
+                                  !is.na(vl) & (vl<li | vl>ls) & !is.infinite(vl) ~ 2,
+                                  is.na(vl) ~ 3,
+                                  is.infinite(vl) ~ 4
+                                  ),
+                 natu = case_when(vway == 2 & (vl < li & dfdv > ca) ~ T,
+                                  vway == 2 & (vl > ls & dfdv < ca) ~ T,
+                                  vway == 3 ~ T,
+                                  vway == 4 & vl < 0 ~ T,
+                                  TRUE ~ F
+                                  ),
+                 exold = case_when(vway == 2 & (vl < li & dfdv < ca) ~ T,
+                                   vway == 2 & (vl > ls & dfdv > ca) ~ T,
+                                   vway == 4 & vl > 0 ~ T,
+                                   TRUE ~ F
+                                   ),
+                 liminf = case_when(vway == 1 & dfdv > ca ~ vl,
+                                    TRUE ~ li
+                                    ),
+                 limsup = case_when(vway == 1 & dfdv < ca ~ vl,
+                                    TRUE ~ ls
+                                    ),
+                 ca = case_when(exold ~ as.numeric(NA),
+                                TRUE ~ ca
+                                ),
+                 cl = case_when(exold ~ as.numeric(NA),
+                                TRUE ~ cl
+                                ),
+                 
+                 ik = case_when(vway == 1 & dfdv > ca ~ li,
+                                exold ~ li,
+                                TRUE ~ vl
+                                ),                 
+                 sk = case_when(vway == 1 & dfdv < ca ~ ls,
+                                exold ~ ls,
+                                TRUE ~ vl
+                                )                 
+                 )
+  if(!all(dfa$natu)){ # Se pelo menos um segmento for atualizado o novo segmento eh adcionado
+  
+    # Limite inferior e superior do novo segmento, que deve ser o min e max dos valores antigos
+    alpha[[t-1]] = dfa %>% select(names(alpha[[t-1]]))
+    alpha[[t-1]][n,"ca"] = dfdv
+    alpha[[t-1]][n,"cl"] = R
+    alpha[[t-1]][n,"liminf"] = min(dfa$ik,na.rm = T)
+    alpha[[t-1]][n,"limsup"] = max(dfa$sk,na.rm = T)
+    
+    
+  }
+ 
+  
+   
 }
 
 ```
