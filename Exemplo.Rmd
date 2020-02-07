@@ -90,6 +90,8 @@ hidro = a0
 dfdv = 0
 R = 0
 dfa = alpha[[1]]
+mi = 0
+ma = 0
 ```
 
 ```{r foward}
@@ -199,7 +201,7 @@ for (t in tmax:2) {
   gback[t,"p2"] = pot %>% filter(nome =="T2") %>% pull(deltag) %>% sum()
   gback[t,"p3"] = pot %>% filter(nome =="T3") %>% pull(deltag) %>% sum()   
   
-  cusback[t] = as.matrix(gback[t,1:3]) %*% termicas$ca + max(hidro$cl - hidro$ca*volumes[t])
+  cusback[t] = as.matrix(gback[t,1:3]) %*% termicas$ca + max(hidro$cl - hidro$ca*volumes[t+1])
   
   R = round(cusback[t] + dfdv*volumes[t], digits = 2)
   
@@ -256,11 +258,15 @@ for (t in tmax:2) {
     alpha[[t-1]] = dfa %>% select(names(alpha[[t-1]]))
     alpha[[t-1]][n,"ca"] = dfdv
     alpha[[t-1]][n,"cl"] = R
+    
     alpha[[t-1]][n,"liminf"] = min(dfa$ik,na.rm = T)
-    alpha[[t-1]][n,"limsup"] = max(dfa$sk,na.rm = T)
+    alpha[[t-1]][n,"limsup"] = max(dfa$sk,na.rm = T) 
+    
+    alpha[[t-1]] = alpha[[t-1]] %>% within(ca[liminf==limsup] <- NA_real_ )
     
     
   }
+  
  
   
    
