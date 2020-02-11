@@ -1,7 +1,9 @@
 ---
 title: "Exeplo PDDE"
 author: "Vitor Pohlenz"
-output: html_document
+output:
+  html_document:
+    code_folding: hide
 ---
 
 ```{r setup, include=FALSE}
@@ -95,8 +97,38 @@ ma = 0
 
 # Sistema
 
-- Afluências: `r y`
-- Demanda: `r L` MWmês
+- Estagios = T =`r tmax`
+- Afluências: y=`r y`
+- Demanda: `r L` MWmes
+- Hidro: 
+    - vmax =`r vmax`
+    - vincial =`r v1`
+    - qmax =`r qmax` hm3
+    - $\rho$ =`r pho` MWmes/hm3
+
+- Térmicas
+
+**OBS: ca = "coeficiente angular"; cl = "coeficiente linear"**
+
+```{r termo}
+knitr::kable(termicas)
+```
+
+
+# Formulação
+
+$$
+min f = \sum_{t=1}^{T} \sum_{k=1}^{3} (c_{t,k} \cdot p_{t,k} + \alpha_t)
+$$
+$$
+s.t.: \sum_{k=1}^{3}(p_{t,k} )+ gh_t \geq L ~ ; ~t = 1,2,...,T
+$$
+$$
+v_t = v_{t-1} + y_t - q_t - s_t ~ ; ~ t = 1,2,...,T
+$$
+$$
+gh_t = \rho \cdot q_t ~ ; ~ 0 \leq p_{t,k} \leq P^{max}_{k} ~; ~ 0 \leq q_t \leq q^{max} ~; ~\alpha_t \geq 0
+$$
 
 
 # Algoritmo
@@ -158,6 +190,7 @@ for (t in 1:tmax) {
 ```
 
 ```{r backward,eval=FALSE}
+# Backward
 for (t in tmax:2) {
   # Parte foward do bacward
   ode[[t]] = rbind(na.omit(alpha[[t]]),termicas )
@@ -287,6 +320,7 @@ for (t in tmax:2) {
 ```
 
 ```{r pdde}
+# Foward and Backward
 for (n in 2:Nmax){
   # foward
   for (t in 1:tmax) {
@@ -473,8 +507,26 @@ for (n in 2:Nmax){
 
 ```
 
+# Resultados
 
-```{r resp}
+- Custo Otimo
+```{r custo}
+knitr::kable(
+  data.frame(Estagio = 1:tmax,
+             Custo = custo
+             )
+)
+
+```
+
+- Volumes
+```{r volumes}
+knitr::kable(
+  data.frame(Estagio = 0:tmax,
+             Volumes = volumes
+             )
+)
+
 
 ```
 
