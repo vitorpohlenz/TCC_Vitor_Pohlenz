@@ -1,4 +1,4 @@
-# TCC Mercados Energia
+# Script Mercados Energia
 - Scripts Mercados de energia
 
 - Desenvolvendo algoritomo de otimização do despacho hidrotérmico para cada estágio.
